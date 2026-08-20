@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>연구비 관리 및 행정 통합 도우미</title>
+  
+  <!-- React & Babel CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <!-- React Native Web CDN -->
+  <script src="https://unpkg.com/react-native-web@0.19.10/dist/react-native-web.js"></script>
+
+  <style>
+    html, body, #root {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      background-color: #f2f2f7;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+    const { 
+      StyleSheet, Text, View, TextInput, TouchableOpacity, 
+      ScrollView, Alert, ActivityIndicator, Image, Modal 
+    } = ReactNativeWeb;
+
+    // --- Firebase & Gemini 설정 (기존 firebaseConfig 정보 기입) ---
+    const FIREBASE_CONFIG = {
+      apiKey: "AIzaSyDummyKeyReplaceWithYours",
+      projectId: "your-firebase-project-id"
+    };
+    const GEMINI_API_KEY = "AIzaSyDummyKeyReplaceWithYours";
+
+    const COLLECTION_NAME = 'meeting_app';
+    const DOC_ID = 'user_shared_data';
+
+    const SYSTEM_INSTRUCTION = `당신은 연구비 예산 및 비목 분류 전문 어시스턴트입니다. '임상' 또는 '국책' 접두어 질문 시 최적의 비목과 사유를 명확히 설명하세요.`;
+
+    const INSURANCE_RATES_2026 = {
+      healthRate: 0.03595, healthMin: 20160, healthMax: 9183480, careRateOfHealth: 0.1314,
+      pensionRate: 0.0475, pensionSalaryMin: 400000, pensionSalaryMax: 6370000,
+      employmentRate: 0.0135, industrialRate: 0.00796
+    };
+
+    const KOREAN_HOLIDAYS = {
+      '2026-01-01': '신정', '2026-02-16': '설날 연휴', '2026-02-17': '설날', '2026-02-18': '설날 연휴',
+      '2026-03-01': '삼일절', '2026-03-02': '대체공휴일', '2026-05-05': '어린이날', '2026-05-24': '부처님오신날',
+      '2026-05-25': '대체공휴일', '2026-06-06': '현충일', '2026-08-15': '광복절', '2026-08-17': '대체공휴일',
+      '2026-09-24': '추석 연휴', '2026-09-25': '추석', '2026-09-26': '추석 연휴', '2026-10-03': '개천절',
+      '2026-10-05': '대체공휴일', '2026-10-09': '한글날', '2026-12-25': '성탄절'
+    };
+
+    const formatDateToYMD = (date) => {
+      if (!date) return '';
+      const d = new Date(date);
+      if (isNaN(d.getTime())) return '';
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+
+    const isHoliday = (date) => KOREAN_HOLIDAYS[formatDateToYMD(date)] || null;
+    const isNonWorkingDay = (date) => {
+      const d = new Date(date);
+      return d.getDay() === 0 || d.getDay() === 6 || !!isHoliday(date);
+    };
+
+    const getNextWorkingDay = (date) => {
+      const cur = new Date(date);
+      cur.setHours(0, 0, 0, 0);
+      while (isNonWorkingDay(cur)) cur.setDate(cur.getDate() + 1);
+      return cur;
+    };
+
+    const getMondayOfDate = (d) => {
+      const dt = new Date(d);
+      const day = dt.getDay();
+      dt.setDate(dt.getDate() - day + (day === 0 ? -6 : 1));
+      dt.setHours(0, 0, 0, 0);
+      return dt;
+    };
+
+    const getWeekInfo = (mondayDate) => {
+      const d = new Date(mondayDate);
+      d.setHours(0, 0, 0, 0);
+      const sunday = new Date(d);
+      sunday.setDate(d.getDate() + 6);
+      const thurs = new Date(d);
+      thurs.setDate(d.getDate() + 3);
+      const year = thurs.getFullYear();
+      const month = thurs.getMonth() + 1;
+
+      const firstDay = new Date(year, month - 1, 1);
+      let fMonDate = 1;
+      const fDayWeek = firstDay.getDay();
+      if (fDayWeek === 1) fMonDate = 1;
+      else if (fDayWeek === 0) fMonDate = 2;
+      else fMonDate = 1 + (8 - fDayWeek);
+      const firstMon = new Date(year, month - 1, fMonDate);
+
+      let weekNum = 0, targetYear = year, targetMonth = month;
+      if (d < firstMon) {
+        const pMonthLast = new Date(year, month - 1, 0);
+        targetYear = pMonthLast.getFullYear();
+        targetMonth = pMonthLast.getMonth() + 1;
+        const pFirstDay = new Date(targetYear, targetMonth - 1, 1);
+        let pFMonDate = 1;
+        const pFDayWeek = pFirstDay.getDay();
+        if (pFDayWeek === 1) pFMonDate = 1;
+        else if (pFDayWeek === 0) pFMonDate = 2;
+        else pFMonDate = 1 + (8 - pFDayWeek);
+        const pFirstMon = new Date(targetYear, targetMonth - 1, pFMonDate);
+        weekNum = Math.floor((d.getTime() - pFirstMon.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
+      } else {
+        weekNum = Math.floor((d.getTime() - firstMon.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
+      }
+
+      const nextMon = new Date(d);
+      nextMon.setDate(d.getDate() + 7);
+      const isLastWeek = nextMon.getMonth() + 1 !== targetMonth;
+
+      return {
+        year: targetYear, month: targetMonth, weekNum, isLastWeekOfMonth: isLastWeek,
+        isFirstWeekOfMonth: weekNum === 1, weekKey: `${targetYear}-${String(targetMonth).padStart(2, '0')}-W${weekNum}`,
+        label: `${targetYear}년 ${targetMonth}월 ${weekNum}주차`,
+        rangeStr: `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} ~ ${String(sunday.getMonth() + 1).padStart(2, '0')}.${String(sunday.getDate()).padStart(2, '0')}`,
+        monday: d, sunday
+      };
+    };
+
+    const calculateProcurementFund = (val) => {
+      const salary = Number(val) || 0;
+      if (salary <= 0) return 0;
+      let health = Math.min(Math.max(Math.floor((salary * INSURANCE_RATES_2026.healthRate) / 10) * 10, INSURANCE_RATES_2026.healthMin), INSURANCE_RATES_2026.healthMax);
+      let care = Math.floor((health * INSURANCE_RATES_2026.careRateOfHealth) / 10) * 10;
+      let npSalary = Math.min(Math.max(salary, INSURANCE_RATES_2026.pensionSalaryMin), INSURANCE_RATES_2026.pensionSalaryMax);
+      let pension = Math.floor((npSalary * INSURANCE_RATES_2026.pensionRate) / 10) * 10;
+      let emp = Math.floor((salary * INSURANCE_RATES_2026.employmentRate) / 10) * 10;
+      let ind = Math.floor((salary * INSURANCE_RATES_2026.industrialRate) / 10) * 10;
+      return Math.round(salary + (health + care + pension + emp + ind) + (salary / 12.0));
+    };
+
+    const computeTotalPeriod = (periods = [], activeYears = [true, true, true, true, true]) => {
+      let s = '', e = '';
+      periods.forEach((p, idx) => {
+        if (activeYears[idx] && p) {
+          const parts = p.split('~');
+          if (parts[0] && (!s || parts[0].trim() < s)) s = parts[0].trim();
+          if (parts[1] && parts[1].trim()) e = parts[1].trim();
+        }
+      });
+      return s && e ? `${s} ~ ${e}` : s || '';
+    };
+
+    const BUDGET_TABLE_SCHEMA = [
+      { id: 'leader_labor', category: '인건비', subCategory: '책임연구원', isLaborLink: true, laborRole: '책임연구원' },
+      { id: 'researcher_labor', category: '인건비', subCategory: '연구원', isLaborLink: true, laborRole: '연구원' },
+      { id: 'asst_labor', category: '인건비', subCategory: '연구보조원', isLaborLink: true, laborRole: '연구보조원' },
+      { id: 'total_labor', category: '인건비 합계', subCategory: '', isCalc: true, calcType: 'sum_labor' },
+      { id: 'student_labor', category: '학생인건비', subCategory: '학생인건비', isInput: true },
+      { id: 'trip_dom', category: '여비', subCategory: '국내여비', isInput: true },
+      { id: 'trip_ovs', category: '여비', subCategory: '국외여비', isInput: true },
+      { id: 'print_office', category: '유인물비', subCategory: '사무용품비', isInput: true },
+      { id: 'print_fee', category: '유인물비', subCategory: '위탁정산수수료', isInput: true },
+      { id: 'print_copy', category: '유인물비', subCategory: '인쇄, 복사', isInput: true },
+      { id: 'print_book', category: '유인물비', subCategory: '문헌구입', isInput: true },
+      { id: 'service_ext', category: '연구개발서비스활용비', subCategory: '외부용역', isInput: true },
+      { id: 'test_fee', category: '시험분석비', subCategory: '시험·분석비', isInput: true },
+      { id: 'comp_rent', category: '전산처리비', subCategory: '컴퓨터 사용료', isInput: true },
+      { id: 'comp_supply', category: '전산처리비', subCategory: '전산소모품', isInput: true },
+      { id: 'comp_stat', category: '전산처리비', subCategory: '통계분석료', isInput: true },
+      { id: 'outcome_pub', category: '성과활용비', subCategory: '논문게재료', isInput: true },
+      { id: 'meet_fee', category: '회의비', subCategory: '회의수당', isInput: true },
+      { id: 'meet_consult', category: '회의비', subCategory: '자문료', isInput: true },
+      { id: 'meet_meal', category: '회의비', subCategory: '식음료대', isInput: true },
+      { id: 'total_activity', category: '연구활동비 합계', subCategory: '', isCalc: true, calcType: 'sum_activity' },
+      { id: 'allowance', category: '연구수당\n(인건비20%내)', subCategory: '연구수당', isInput: true },
+      { id: 'indirect_expense', category: '간접비', subCategory: '자동 산정', isCalc: true, calcType: 'calc_indirect' },
+      { id: 'total_budget_input', category: '연구비 총액', subCategory: '목표액 입력', isInput: true }
+    ];
+
+    const groupSchemaByCategory = (schema) => {
+      const groups = [];
+      let current = null;
+      schema.forEach(row => {
+        if (current && current.category === row.category && !row.isCalc) {
+          current.rows.push(row);
+        } else {
+          current = { category: row.category, isCalc: row.isCalc, isTotalBudget: row.id === 'total_budget_input', rows: [row] };
+          groups.push(current);
+        }
+      });
+      return groups;
+    };
+
+    const DEFAULT_LABOR_ROWS = [
+      { id: '1', role: '책임연구원', name: '', unitCost: '', count: '1', months: '12', rate: '100', isPaid: true, monthlySalary: '' },
+      { id: '2', role: '연구원', name: '', unitCost: '', count: '1', months: '12', rate: '100', isPaid: true, monthlySalary: '' },
+      { id: '3', role: '연구보조원', name: '', unitCost: '', count: '1', months: '12', rate: '100', isPaid: true, monthlySalary: '' },
+      { id: '4', role: '보조원', name: '', unitCost: '', count: '1', months: '12', rate: '100', isPaid: true, monthlySalary: '' }
+    ];
+
+    const createInitialLaborByYear = () => ({
+      0: JSON.parse(JSON.stringify(DEFAULT_LABOR_ROWS)),
+      1: JSON.parse(JSON.stringify(DEFAULT_LABOR_ROWS)),
+      2: JSON.parse(JSON.stringify(DEFAULT_LABOR_ROWS)),
+      3: JSON.parse(JSON.stringify(DEFAULT_LABOR_ROWS)),
+      4: JSON.parse(JSON.stringify(DEFAULT_LABOR_ROWS))
+    });
+
+    const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
+    const TODAY_STR = '2026-08-20';
+
+    function App() {
+      const [mainTab, setMainTab] = useState('clinical');
+      const [clinicalSubTab, setClinicalSubTab] = useState('meeting');
+      const [budgetSubTab, setBudgetSubTab] = useState('rnd');
+      const [commonSubTab, setCommonSubTab] = useState('todo');
+      const [loading, setLoading] = useState(false);
+
+      // --- 투두 & 캘린더 상태 ---
+      const [todos, setTodos] = useState([]);
+      const [newTodoCategory, setNewTodoCategory] = useState('임상');
+      const [newTodoTitle, setNewTodoTitle] = useState('');
+      const [newTodoRepeat, setNewTodoRepeat] = useState('none');
+      const [currentMonday, setCurrentMonday] = useState(getMondayOfDate(new Date(2026, 7, 20)));
+      const [selectedCalendarDate, setSelectedCalendarDate] = useState('2026-08-20');
+      const [calendarViewMonth, setCalendarViewMonth] = useState(new Date(2026, 7, 1));
+      const [doneViewMonth, setDoneViewMonth] = useState(new Date(2026, 7, 1));
+
+      // 투두 인라인 수정
+      const [editingTodoId, setEditingTodoId] = useState(null);
+      const [editingTodoCategory, setEditingTodoCategory] = useState('임상');
+      const [editingTodoTitle, setEditingTodoTitle] = useState('');
+      const [editingTodoRepeat, setEditingTodoRepeat] = useState('none');
+
+      // 회의비/계정/서류/국책 상태
+      const [titles, setTitles] = useState([]);
+      const [newTitle, setNewTitle] = useState('');
+      const [places, setPlaces] = useState([]);
+      const [newPlace, setNewPlace] = useState('');
+      const [members, setMembers] = useState([]);
+      const [newMember, setNewMember] = useState('');
+      const [requiredMembers, setRequiredMembers] = useState([]);
+      const [newRequiredMember, setNewRequiredMember] = useState('');
+      const [pickCount, setPickCount] = useState('');
+      const [pickedResult, setPickedResult] = useState('');
+      const [reasons, setReasons] = useState([]);
+      const [newReason, setNewReason] = useState('');
+      const [targetDateInput, setTargetDateInput] = useState('');
+      const [targetUsageInput, setTargetUsageInput] = useState('');
+      const [selectedReasonIdx, setSelectedReasonIdx] = useState(null);
+
+      const [accounts, setAccounts] = useState([]);
+      const [siteInput, setSiteInput] = useState('');
+      const [nameInput, setNameInput] = useState('');
+      const [idInput, setIdInput] = useState('');
+      const [pwInput, setPwInput] = useState('');
+
+      const [rndProjectInfo, setRndProjectInfo] = useState({ stageType: '지원', title: '', leader: '', hostOrg: '', supportOrg: '', totalPeriod: '', activeYears: [true, true, true, true, true] });
+      const [budgetGrid, setBudgetGrid] = useState({ stages: ['1단계', '1단계', '2단계', '2단계', '2단계'], periods: ['2026.03.01~2027.02.28', '2027.03.01~2028.02.29', '2028.03.01~2029.02.28', '2029.03.01~2030.02.28', '2030.03.01~2031.02.28'], values: {} });
+      const [rndLaborMap, setRndLaborMap] = useState(createInitialLaborByYear());
+
+      const [chatMessages, setChatMessages] = useState([]);
+      const [inputPrompt, setInputPrompt] = useState('');
+      const [aiLoading, setAiLoading] = useState(false);
+
+      const copyToClipboard = (text) => {
+        if (!text) return;
+        navigator.clipboard.writeText(String(text));
+        alert('복사되었습니다: ' + text);
+      };
+
+      // --- 투두리스트 핸들러 ---
+      const curWeekInfo = getWeekInfo(currentMonday);
+      const selDateObj = new Date(selectedCalendarDate);
+      const selDayOfWeek = selDateObj.getDay();
+      const selDateNum = selDateObj.getDate();
+      const selMonthNum = selDateObj.getMonth() + 1;
+      const selDateMonday = getMondayOfDate(selDateObj);
+      const selDateWeekInfo = getWeekInfo(selDateMonday);
+
+      const addTodoItem = () => {
+        if (!newTodoTitle.trim()) return alert('할 일 내용을 입력해주세요.');
+        const d = new Date(selectedCalendarDate);
+        const startMon = getMondayOfDate(d);
+        const wInfo = getWeekInfo(startMon);
+        const newItem = {
+          id: Date.now().toString(),
+          category: newTodoCategory,
+          title: newTodoTitle.trim(),
+          baseDate: selectedCalendarDate,
+          baseDayOfWeek: d.getDay(),
+          baseDayOfMonth: d.getDate(),
+          baseMonth: d.getMonth() + 1,
+          baseWeekNum: wInfo.weekNum,
+          baseIsLastWeek: wInfo.isLastWeekOfMonth,
+          startWeekKey: wInfo.weekKey,
+          startMondayStr: startMon.toISOString(),
+          repeat: newTodoRepeat,
+          doneWeeks: {},
+          createdAt: new Date().toISOString()
+        };
+        setTodos([newItem, ...todos]);
+        setNewTodoTitle('');
+      };
+
+      const isTodoActiveOnDate = (todo, targetDate) => {
+        const todoStart = new Date(todo.baseDate || todo.createdAt);
+        todoStart.setHours(0, 0, 0, 0);
+        const target = new Date(targetDate);
+        target.setHours(0, 0, 0, 0);
+        if (target < todoStart) return false;
+
+        if (todo.repeat === 'none') return formatDateToYMD(target) === formatDateToYMD(getNextWorkingDay(todoStart));
+        if (todo.repeat === 'week') {
+          const weekMon = getMondayOfDate(target);
+          const orig = new Date(weekMon);
+          orig.setDate(weekMon.getDate() + (todo.baseDayOfWeek === 0 ? 6 : todo.baseDayOfWeek - 1));
+          return formatDateToYMD(target) === formatDateToYMD(getNextWorkingDay(orig));
+        }
+        if (todo.repeat === 'biweek') {
+          const weekMon = getMondayOfDate(target);
+          const orig = new Date(weekMon);
+          orig.setDate(weekMon.getDate() + (todo.baseDayOfWeek === 0 ? 6 : todo.baseDayOfWeek - 1));
+          const diffWeeks = Math.round((getMondayOfDate(orig).getTime() - getMondayOfDate(todoStart).getTime()) / (7 * 24 * 60 * 60 * 1000));
+          if (diffWeeks < 0 || diffWeeks % 2 !== 0) return false;
+          return formatDateToYMD(target) === formatDateToYMD(getNextWorkingDay(orig));
+        }
+        if (todo.repeat === 'month_date') {
+          const orig = new Date(target.getFullYear(), target.getMonth(), todo.baseDayOfMonth);
+          return formatDateToYMD(target) === formatDateToYMD(getNextWorkingDay(orig));
+        }
+        if (todo.repeat === 'month_nth_week') {
+          const firstMon = getMondayOfDate(new Date(target.getFullYear(), target.getMonth(), 1));
+          const targetMon = new Date(firstMon);
+          targetMon.setDate(firstMon.getDate() + (todo.baseWeekNum - 1) * 7);
+          const orig = new Date(targetMon);
+          orig.setDate(targetMon.getDate() + (todo.baseDayOfWeek === 0 ? 6 : todo.baseDayOfWeek - 1));
+          return formatDateToYMD(target) === formatDateToYMD(getNextWorkingDay(orig));
+        }
+        if (todo.repeat === 'year') {
+          const orig = new Date(target.getFullYear(), todo.baseMonth - 1, todo.baseDayOfMonth);
+          return formatDateToYMD(target) === formatDateToYMD(getNextWorkingDay(orig));
+        }
+        return false;
+      };
+
+      const isTodoActiveInWeek = (todo, weekInfo) => {
+        for (let i = 0; i < 7; i++) {
+          const dayDate = new Date(weekInfo.monday);
+          dayDate.setDate(dayDate.getDate() + i);
+          if (isTodoActiveOnDate(todo, dayDate)) return true;
+        }
+        return false;
+      };
+
+      const toggleTodoDoneInWeek = (todoId, weekKey) => {
+        setTodos(todos.map(t => {
+          if (t.id === todoId) {
+            const nextDone = { ...(t.doneWeeks || {}) };
+            if (nextDone[weekKey]) delete nextDone[weekKey];
+            else nextDone[weekKey] = '2026-08-20';
+            return { ...t, doneWeeks: nextDone };
+          }
+          return t;
+        }));
+      };
+
+      const removeTodo = (id) => setTodos(todos.filter(t => t.id !== id));
+
+      const dynamicRepeatOptions = [
+        { key: 'none', label: '1회성' },
+        { key: 'week', label: `매주(${DAY_NAMES[selDayOfWeek]})` },
+        { key: 'biweek', label: `2주(${DAY_NAMES[selDayOfWeek]})` },
+        { key: 'month_date', label: `매월(${selDateNum}일)` },
+        { key: 'month_nth_week', label: `매월 ${selDateWeekInfo.weekNum}주차(${DAY_NAMES[selDayOfWeek]})` },
+        { key: 'year', label: `매년(${selMonthNum}/${selDateNum})` }
+      ];
+
+      const currentWeekActiveTodos = todos.filter(t => isTodoActiveInWeek(t, curWeekInfo) && !t.doneWeeks?.[curWeekInfo.weekKey]);
+      const currentWeekDoneTodos = todos.filter(t => isTodoActiveInWeek(t, curWeekInfo) && !!t.doneWeeks?.[curWeekInfo.weekKey]);
+
+      // --- 회의비 핸들러 ---
+      const addTitle = () => {
+        if (!newTitle.trim()) return;
+        setTitles([...titles, newTitle.trim()]);
+        setNewTitle('');
+      };
+      const addPlace = () => {
+        if (!newPlace.trim()) return;
+        setPlaces([...places, newPlace.trim()]);
+        setNewPlace('');
+      };
+      const addMember = () => {
+        if (!newMember.trim()) return;
+        setMembers([...members, ...newMember.split(',').map(s => s.trim())]);
+        setNewMember('');
+      };
+      const drawRandomMembers = () => {
+        const count = parseInt(pickCount, 10);
+        if (!count || count <= 0) return alert('올바른 인원수를 입력해주세요.');
+        setPickedResult([...members].sort(() => 0.5 - Math.random()).slice(0, count).join(', '));
+      };
+
+      // 달력 렌더링
+      const renderCalendar = () => {
+        const year = calendarViewMonth.getFullYear();
+        const month = calendarViewMonth.getMonth();
+        const firstDay = new Date(year, month, 1).getDay();
+        const totalDays = new Date(year, month + 1, 0).getDate();
+
+        const days = [];
+        for (let i = 0; i < firstDay; i++) days.push(null);
+        for (let d = 1; d <= totalDays; d++) days.push(d);
+
+        const weeks = [];
+        for (let i = 0; i < days.length; i += 7) {
+          const chunk = days.slice(i, i + 7);
+          while (chunk.length < 7) chunk.push(null);
+          weeks.push(chunk);
+        }
+
+        return (
+          <View style={styles.calendarWrap}>
+            <View style={styles.rowBetween}>
+              <Text style={styles.calendarMonthTitle}>📅 {year}년 {month + 1}월 달력</Text>
+              <View style={{ flexDirection: 'row', gap: 6 }}>
+                <TouchableOpacity style={styles.calNavBtn} onPress={() => setCalendarViewMonth(new Date(year, month - 1, 1))}><Text style={styles.calNavText}>◀</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.calNavBtn} onPress={() => setCalendarViewMonth(new Date(2026, 7, 1))}><Text style={styles.calNavText}>오늘</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.calNavBtn} onPress={() => setCalendarViewMonth(new Date(year, month + 1, 1))}><Text style={styles.calNavText}>▶</Text></TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.calWeekHeader}>
+              {['일', '월', '화', '수', '목', '금', '토'].map((w, idx) => (
+                <Text key={w} style={[styles.calWeekText, idx === 0 && { color: '#ff3b30' }, idx === 6 && { color: '#007AFF' }]}>{w}</Text>
+              ))}
+            </View>
+
+            {weeks.map((week, wIdx) => (
+              <View key={wIdx} style={styles.calRow}>
+                {week.map((day, dIdx) => {
+                  if (!day) return <View key={dIdx} style={styles.calCell} />;
+                  const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                  const isSelected = selectedCalendarDate === dateStr;
+                  const isToday = dateStr === TODAY_STR;
+                  const cellDate = new Date(year, month, day);
+                  const isRedDay = cellDate.getDay() === 0 || !!isHoliday(cellDate);
+                  const activeTodosOnDay = todos.filter(t => isTodoActiveOnDate(t, cellDate));
+
+                  return (
+                    <TouchableOpacity
+                      key={dIdx}
+                      style={[styles.calCell, isToday && styles.calCellToday, isSelected && styles.calCellSelected]}
+                      onPress={() => {
+                        setSelectedCalendarDate(dateStr);
+                        setCurrentMonday(getMondayOfDate(cellDate));
+                      }}
+                    >
+                      {isToday && !isSelected && <View style={styles.todayMiniBadge}><Text style={styles.todayMiniBadgeText}>오늘</Text></View>}
+                      <Text style={[styles.calDayText, isRedDay && { color: '#ff3b30', fontWeight: 'bold' }, isSelected && { color: '#fff', fontWeight: 'bold' }]}>{day}</Text>
+                      {activeTodosOnDay.length > 0 && (
+                        <View style={styles.calDotWrap}>
+                          <View style={[styles.calDot, activeTodosOnDay.some(t => !t.doneWeeks?.[getWeekInfo(getMondayOfDate(cellDate)).weekKey]) ? styles.calDotPending : styles.calDotDone]} />
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            ))}
+          </View>
+        );
+      };
+
+      return (
+        <View style={styles.container}>
+          {/* 상단 3단 메인 탭 */}
+          <View style={styles.topTabBar}>
+            <TouchableOpacity style={[styles.topTabBtn, mainTab === 'clinical' && styles.topTabBtnActive]} onPress={() => setMainTab('clinical')}><Text style={[styles.topTabText, mainTab === 'clinical' && styles.topTabTextActive]}>🏥 임상연구비</Text></TouchableOpacity>
+            <TouchableOpacity style={[styles.topTabBtn, mainTab === 'national' && styles.topTabBtnActive]} onPress={() => setMainTab('national')}><Text style={[styles.topTabText, mainTab === 'national' && styles.topTabTextActive]}>📑 국책연구비</Text></TouchableOpacity>
+            <TouchableOpacity style={[styles.topTabBtn, mainTab === 'common' && styles.topTabBtnActive]} onPress={() => setMainTab('common')}><Text style={[styles.topTabText, mainTab === 'common' && styles.topTabTextActive]}>⚙️ 공통</Text></TouchableOpacity>
+          </View>
+
+          {/* 서브 탭 */}
+          {mainTab === 'clinical' && (
+            <View style={styles.subTabBar}>
+              <TouchableOpacity style={[styles.subTabBtn, clinicalSubTab === 'meeting' && styles.subTabBtnActive]} onPress={() => setClinicalSubTab('meeting')}><Text style={[styles.subTabText, clinicalSubTab === 'meeting' && styles.subTabTextActive]}>📊 회의비</Text></TouchableOpacity>
+              <TouchableOpacity style={[styles.subTabBtn, clinicalSubTab === 'gallery' && styles.subTabBtnActive]} onPress={() => setClinicalSubTab('gallery')}><Text style={[styles.subTabText, clinicalSubTab === 'gallery' && styles.subTabTextActive]}>🖼️ 서류</Text></TouchableOpacity>
+              <TouchableOpacity style={[styles.subTabBtn, clinicalSubTab === 'search' && styles.subTabBtnActive]} onPress={() => setClinicalSubTab('search')}><Text style={[styles.subTabText, clinicalSubTab === 'search' && styles.subTabTextActive]}>✨ 비목검색</Text></TouchableOpacity>
+            </View>
+          )}
+
+          {mainTab === 'common' && (
+            <View style={styles.subTabBar}>
+              <TouchableOpacity style={[styles.subTabBtn, commonSubTab === 'todo' && styles.subTabBtnActive]} onPress={() => setCommonSubTab('todo')}><Text style={[styles.subTabText, commonSubTab === 'todo' && styles.subTabTextActive]}>📋 투두리스트</Text></TouchableOpacity>
+              <TouchableOpacity style={[styles.subTabBtn, commonSubTab === 'accounts' && styles.subTabBtnActive]} onPress={() => setCommonSubTab('accounts')}><Text style={[styles.subTabText, commonSubTab === 'accounts' && styles.subTabTextActive]}>🔐 계정관리</Text></TouchableOpacity>
+              <TouchableOpacity style={[styles.subTabBtn, commonSubTab === 'search' && styles.subTabBtnActive]} onPress={() => setCommonSubTab('search')}><Text style={[styles.subTabText, commonSubTab === 'search' && styles.subTabTextActive]}>✨ 비목검색</Text></TouchableOpacity>
+            </View>
+          )}
+
+          {/* 공통 -> 투두리스트 */}
+          {mainTab === 'common' && commonSubTab === 'todo' && (
+            <ScrollView style={styles.fluidScroll}>
+              <View style={styles.card}>
+                <View style={styles.rowBetween}>
+                  <Text style={styles.weekMainBadge}>📅 {curWeekInfo.label}</Text>
+                  <View style={{ flexDirection: 'row', gap: 6 }}>
+                    <TouchableOpacity style={styles.weekNavBtn} onPress={() => { const next = new Date(currentMonday); next.setDate(next.getDate() - 7); setCurrentMonday(next); }}><Text style={styles.weekNavText}>◀ 이전 주</Text></TouchableOpacity>
+                    <TouchableOpacity style={styles.weekNavBtn} onPress={() => setCurrentMonday(getMondayOfDate(new Date(2026, 7, 20)))}><Text style={styles.weekNavText}>이번 주</Text></TouchableOpacity>
+                    <TouchableOpacity style={styles.weekNavBtn} onPress={() => { const next = new Date(currentMonday); next.setDate(next.getDate() + 7); setCurrentMonday(next); }}><Text style={styles.weekNavText}>다음 주 ▶</Text></TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* 등록 바 */}
+                <View style={styles.todoInputSection}>
+                  <View style={styles.categoryToggleRow}>
+                    {['임상', '국책', '일반'].map(cat => (
+                      <TouchableOpacity key={cat} style={[styles.categoryToggleBtn, newTodoCategory === cat && styles.catClinicalActive]} onPress={() => setNewTodoCategory(cat)}>
+                        <Text style={styles.categoryToggleText}>{cat}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <View style={[styles.row, { marginTop: 8 }]}>
+                    <TextInput style={[styles.input, styles.fluidInput, { marginRight: 6 }]} placeholder="할 일 내용 입력..." value={newTodoTitle} onChangeText={setNewTodoTitle} onSubmitEditing={addTodoItem} />
+                  </View>
+                  <View style={[styles.rowBetween, { marginTop: 6, flexWrap: 'wrap', gap: 4 }]}>
+                    <View style={styles.repeatToggleGroup}>
+                      {dynamicRepeatOptions.map(r => (
+                        <TouchableOpacity key={r.key} style={[styles.repeatBtn, newTodoRepeat === r.key && styles.repeatBtnActive]} onPress={() => setNewTodoRepeat(r.key)}>
+                          <Text style={styles.repeatBtnText}>{r.label}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                    <TouchableOpacity style={styles.btn} onPress={addTodoItem}><Text style={styles.btnText}>추가</Text></TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* 주간 목록 */}
+                <View style={{ marginTop: 10, gap: 6 }}>
+                  {currentWeekActiveTodos.map(item => (
+                    <View key={item.id} style={styles.todoItemCard}>
+                      <TouchableOpacity onPress={() => toggleTodoDoneInWeek(item.id, curWeekInfo.weekKey)} style={{ marginRight: 8 }}><Text style={{ fontSize: 18 }}>⬜</Text></TouchableOpacity>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.todoTitle}>[{item.category}] {item.title}</Text>
+                        <Text style={styles.todoDateText}>📌 적용: {curWeekInfo.label}</Text>
+                      </View>
+                      <TouchableOpacity onPress={() => removeTodo(item.id)}><Text style={{ color: '#888', fontWeight: 'bold' }}>✕</Text></TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              </View>
+
+              {/* 달력 */}
+              <View style={styles.card}>
+                {renderCalendar()}
+              </View>
+            </ScrollView>
+          )}
+
+          {/* 임상 -> 회의비 */}
+          {mainTab === 'clinical' && clinicalSubTab === 'meeting' && (
+            <ScrollView style={styles.fluidScroll}>
+              <View style={styles.card}>
+                <Text style={styles.cardHeader}>📌 회의 제목 (누르면 복사)</Text>
+                <View style={styles.row}>
+                  <TextInput style={[styles.input, styles.fluidInput, { marginRight: 6 }]} placeholder="회의명 입력..." value={newTitle} onChangeText={setNewTitle} />
+                  <TouchableOpacity style={styles.btn} onPress={addTitle}><Text style={styles.btnText}>추가</Text></TouchableOpacity>
+                </View>
+                {titles.map((t, idx) => (
+                  <TouchableOpacity key={idx} style={styles.listItem} onPress={() => copyToClipboard(t)}>
+                    <Text style={styles.itemText}>{t}</Text>
+                    <Text style={{ color: '#007AFF', fontWeight: 'bold' }}>복사</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={styles.card}>
+                <Text style={styles.cardHeader}>👥 참여자 랜덤 추출</Text>
+                <View style={styles.row}>
+                  <TextInput style={[styles.input, styles.fluidInput, { marginRight: 6 }]} placeholder="참여자 명단 (쉼표 구분)..." value={newMember} onChangeText={setNewMember} />
+                  <TextInput style={[styles.input, { width: 50, marginRight: 6, textAlign: 'center' }]} placeholder="수" value={pickCount} onChangeText={setPickCount} keyboardType="numeric" />
+                  <TouchableOpacity style={[styles.btn, { backgroundColor: '#34c759' }]} onPress={drawRandomMembers}><Text style={styles.btnText}>뽑기</Text></TouchableOpacity>
+                </View>
+                {pickedResult ? (
+                  <TouchableOpacity style={styles.resultBox} onPress={() => { copyToClipboard(pickedResult); setPickedResult(''); }}>
+                    <Text style={{ color: '#1b5e20', fontWeight: 'bold' }}>결과: {pickedResult} (터치 시 복사)</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            </ScrollView>
+          )}
+        </View>
+      );
+    }
+
+    const styles = StyleSheet.create({
+      container: { flex: 1, backgroundColor: '#f2f2f7', paddingTop: 20, paddingHorizontal: 12 },
+      fluidScroll: { flex: 1, width: '100%' },
+      fluidInput: { flex: 1 },
+      topTabBar: { flexDirection: 'row', backgroundColor: '#d1d1d6', borderRadius: 10, padding: 3, marginBottom: 8 },
+      topTabBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 8 },
+      topTabBtnActive: { backgroundColor: '#ffffff' },
+      topTabText: { fontSize: 12, fontWeight: '600', color: '#636366' },
+      topTabTextActive: { color: '#000000', fontWeight: 'bold' },
+      subTabBar: { flexDirection: 'row', backgroundColor: '#e2e8f0', borderRadius: 8, padding: 2, marginBottom: 8 },
+      subTabBtn: { flex: 1, paddingVertical: 6, alignItems: 'center', borderRadius: 6 },
+      subTabBtnActive: { backgroundColor: '#007AFF' },
+      subTabText: { fontSize: 11, fontWeight: '600', color: '#475569' },
+      subTabTextActive: { color: '#ffffff', fontWeight: 'bold' },
+      card: { backgroundColor: '#ffffff', padding: 12, borderRadius: 10, marginBottom: 10, borderWidth: 1, borderColor: '#e5e5ea' },
+      cardHeader: { fontSize: 14, fontWeight: 'bold', marginBottom: 8 },
+      row: { flexDirection: 'row', alignItems: 'center' },
+      rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+      input: { borderWidth: 1, borderColor: '#d1d1d6', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 6, backgroundColor: '#fafafa', fontSize: 12 },
+      btn: { backgroundColor: '#007AFF', paddingHorizontal: 12, paddingVertical: 6, justifyContent: 'center', alignItems: 'center', borderRadius: 6 },
+      btnText: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
+      listItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8f9fa', borderRadius: 6, marginTop: 4, padding: 8, borderWidth: 1, borderColor: '#e5e5ea' },
+      itemText: { fontSize: 12, flex: 1 },
+      resultBox: { marginTop: 8, padding: 10, backgroundColor: '#eef9f1', borderRadius: 8, alignItems: 'center' },
+      weekMainBadge: { fontSize: 15, fontWeight: 'bold', color: '#007AFF' },
+      weekNavBtn: { paddingHorizontal: 8, paddingVertical: 4, backgroundColor: '#f2f2f7', borderRadius: 6 },
+      weekNavText: { fontSize: 11, color: '#007AFF', fontWeight: 'bold' },
+      todoInputSection: { backgroundColor: '#f9f9fb', padding: 8, borderRadius: 8, marginTop: 8, borderWidth: 1, borderColor: '#e5e5ea' },
+      categoryToggleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+      categoryToggleBtn: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 6, backgroundColor: '#fff', borderWidth: 1, borderColor: '#d1d1d6' },
+      catClinicalActive: { backgroundColor: '#e6f7ff', borderColor: '#91d5ff' },
+      categoryToggleText: { fontSize: 11, fontWeight: 'bold', color: '#666' },
+      repeatToggleGroup: { flexDirection: 'row', backgroundColor: '#f2f2f7', borderRadius: 6, padding: 2, flexWrap: 'wrap', gap: 2 },
+      repeatBtn: { paddingHorizontal: 6, paddingVertical: 4, borderRadius: 4 },
+      repeatBtnActive: { backgroundColor: '#007AFF' },
+      repeatBtnText: { fontSize: 10, color: '#666' },
+      todoItemCard: { flexDirection: 'row', alignItems: 'center', padding: 10, backgroundColor: '#f9f9fb', borderRadius: 8, borderWidth: 1, borderColor: '#e5e5ea' },
+      todoTitle: { fontSize: 13, fontWeight: 'bold', color: '#1c1c1e' },
+      todoDateText: { fontSize: 11, color: '#666', marginTop: 2 },
+      calendarWrap: { marginTop: 8, padding: 8, backgroundColor: '#f9f9fb', borderRadius: 8, borderWidth: 1, borderColor: '#e5e5ea' },
+      calendarMonthTitle: { fontSize: 13, fontWeight: 'bold' },
+      calNavBtn: { paddingHorizontal: 6, paddingVertical: 3, backgroundColor: '#fff', borderRadius: 4, borderWidth: 1, borderColor: '#ccc' },
+      calNavText: { fontSize: 10, fontWeight: 'bold' },
+      calWeekHeader: { flexDirection: 'row', width: '100%', marginVertical: 6 },
+      calWeekText: { flex: 1, textAlign: 'center', fontSize: 11, fontWeight: 'bold', color: '#666' },
+      calRow: { flexDirection: 'row', width: '100%', marginVertical: 2 },
+      calCell: { flex: 1, height: 38, justifyContent: 'center', alignItems: 'center', borderRadius: 6, marginHorizontal: 1, position: 'relative' },
+      calCellToday: { borderWidth: 2, borderColor: '#ff9500', backgroundColor: '#fffdf5' },
+      calCellSelected: { backgroundColor: '#007AFF' },
+      todayMiniBadge: { position: 'absolute', top: 1, backgroundColor: '#ff9500', borderRadius: 3, paddingHorizontal: 2 },
+      todayMiniBadgeText: { color: '#fff', fontSize: 7, fontWeight: 'bold' },
+      calDayText: { fontSize: 12, color: '#333' },
+      calDotWrap: { position: 'absolute', bottom: 3, flexDirection: 'row', justifyContent: 'center', width: '100%' },
+      calDot: { width: 5, height: 5, borderRadius: 2.5 },
+      calDotPending: { backgroundColor: '#ff4d4f' },
+      calDotDone: { backgroundColor: '#52c41a' }
+    });
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
