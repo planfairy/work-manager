@@ -4,52 +4,54 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>연구비 관리 및 행정 통합 도우미</title>
-  
-  <!-- React & Babel CDN -->
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
   <style>
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #f2f2f7; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
-    #root { display: flex; flex-direction: column; height: 100%; max-width: 900px; margin: 0 auto; padding: 12px; }
+    body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #f2f2f7; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: #1c1c1e; }
+    .container { max-width: 900px; margin: 0 auto; padding: 14px; min-height: 100vh; display: flex; flex-direction: column; }
     
     /* 탭 바 */
     .tab-bar { display: flex; background-color: #d1d1d6; border-radius: 10px; padding: 3px; margin-bottom: 8px; }
-    .tab-btn { flex: 1; padding: 10px 4px; text-align: center; border: none; background: transparent; font-size: 13px; font-weight: 600; color: #636366; border-radius: 8px; cursor: pointer; }
-    .tab-btn.active { background-color: #ffffff; color: #000000; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .tab-btn { flex: 1; padding: 10px 4px; text-align: center; border: none; background: transparent; font-size: 13px; font-weight: 600; color: #636366; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+    .tab-btn.active { background-color: #ffffff; color: #000000; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
     
     .sub-tab-bar { display: flex; background-color: #e2e8f0; border-radius: 8px; padding: 3px; margin-bottom: 10px; gap: 2px; }
-    .sub-tab-btn { flex: 1; padding: 8px 2px; text-align: center; border: none; background: transparent; font-size: 11.5px; font-weight: 600; color: #475569; border-radius: 6px; cursor: pointer; }
+    .sub-tab-btn { flex: 1; padding: 8px 2px; text-align: center; border: none; background: transparent; font-size: 11.5px; font-weight: 600; color: #475569; border-radius: 6px; cursor: pointer; transition: 0.2s; }
     .sub-tab-btn.active { background-color: #007AFF; color: #ffffff; font-weight: bold; }
 
-    /* 카드 컨테이너 */
+    /* 카드 */
     .card { background-color: #ffffff; border-radius: 12px; padding: 14px; margin-bottom: 12px; border: 1px solid #e5e5ea; box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
-    .card-header { font-size: 14.5px; font-weight: bold; margin-bottom: 10px; color: #1c1c1e; display: flex; justify-content: space-between; align-items: center; }
+    .card-header { font-size: 14.5px; font-weight: bold; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+    .sub-header { font-size: 11.5px; font-weight: 600; color: #636366; margin-bottom: 4px; }
     
-    .row { display: flex; align-items: center; width: 100%; margin-bottom: 8px; }
+    .row { display: flex; align-items: center; width: 100%; margin-bottom: 8px; gap: 6px; }
     .row-between { display: flex; justify-content: space-between; align-items: center; width: 100%; }
     
-    /* 폼 요소 */
-    input, textarea, select { border: 1px solid #d1d1d6; border-radius: 6px; padding: 8px 10px; background-color: #fafafa; font-size: 12.5px; outline: none; }
-    input:focus, textarea:focus { border-color: #007AFF; background-color: #fff; }
-    .input-flex { flex: 1; }
+    /* 폼 */
+    input, textarea, select { border: 1px solid #d1d1d6; border-radius: 6px; padding: 8px 10px; background-color: #fafafa; font-size: 12.5px; outline: none; flex: 1; }
+    input:focus, textarea:focus, select:focus { border-color: #007AFF; background-color: #fff; }
     
-    button.btn { background-color: #007AFF; color: #fff; border: none; border-radius: 6px; padding: 8px 14px; font-size: 12.5px; font-weight: bold; cursor: pointer; display: inline-flex; justify-content: center; align-items: center; }
+    button.btn { background-color: #007AFF; color: #fff; border: none; border-radius: 6px; padding: 8px 12px; font-size: 12px; font-weight: bold; cursor: pointer; white-space: nowrap; display: inline-flex; justify-content: center; align-items: center; transition: 0.15s; }
     button.btn:active { opacity: 0.8; }
     .btn-green { background-color: #34C759; }
     .btn-orange { background-color: #ff9500; }
     .btn-red { background-color: #ff3b30; }
     .btn-gray { background-color: #8e8e93; }
+    .btn-purple { background-color: #5856d6; }
 
-    /* 리스트 아이템 */
+    /* 리스트 */
     .list-item { display: flex; justify-content: space-between; align-items: center; background-color: #f8f9fa; border: 1px solid #e5e5ea; border-radius: 8px; padding: 10px; margin-top: 6px; }
     .todo-card { display: flex; align-items: center; background-color: #f9f9fb; border: 1px solid #e5e5ea; border-radius: 8px; padding: 10px; margin-top: 6px; gap: 8px; }
     .todo-card.warn { border-color: #ffa39e; background-color: #fff1f0; }
     .todo-card.done { opacity: 0.7; background-color: #f6ffed; border-color: #b7eb8f; }
 
-    /* 달력 그리드 */
+    /* 배지 */
+    .badge { font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px; display: inline-block; }
+    .badge-clinical { background-color: #e6f7ff; color: #0050b3; border: 1px solid #adc6ff; }
+    .badge-national { background-color: #f6ffed; color: #389e0d; border: 1px solid #d9f7be; }
+    .badge-general { background-color: #fff7e6; color: #d46b08; border: 1px solid #ffd591; }
+    .badge-warn { background-color: #ff4d4f; color: #fff; }
+
+    /* 달력 */
     .calendar-grid { width: 100%; border-collapse: collapse; margin-top: 6px; }
     .cal-header-cell { width: 14.28%; text-align: center; font-size: 11.5px; font-weight: bold; padding: 6px 0; color: #666; }
     .cal-cell { width: 14.28%; height: 44px; text-align: center; vertical-align: middle; border-radius: 8px; cursor: pointer; position: relative; font-size: 12.5px; }
@@ -62,455 +64,621 @@
     .dot-red { background-color: #ff4d4f; }
     .dot-green { background-color: #52c41a; }
 
-    /* 배지 및 태그 */
-    .badge { font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px; display: inline-block; }
-    .badge-clinical { background-color: #e6f7ff; color: #0050b3; border: 1px solid #adc6ff; }
-    .badge-national { background-color: #f6ffed; color: #389e0d; border: 1px solid #d9f7be; }
-    .badge-general { background-color: #fff7e6; color: #d46b08; border: 1px solid #ffd591; }
-
-    /* 표 스타일 */
-    .table-container { width: 100%; overflow-x: auto; margin-top: 8px; }
-    table.budget-table { width: 100%; border-collapse: collapse; background: #fff; font-size: 11.5px; text-align: center; border: 1px solid #333; }
-    table.budget-table th, table.budget-table td { border: 1px solid #ccc; padding: 6px 4px; }
+    /* 국책 표 */
+    .table-responsive { width: 100%; overflow-x: auto; margin-top: 8px; }
+    table.budget-table { width: 100%; border-collapse: collapse; background: #fff; font-size: 11px; text-align: center; border: 1px solid #333; }
+    table.budget-table th, table.budget-table td { border: 1px solid #ccc; padding: 6px 4px; min-width: 80px; }
     table.budget-table th { background-color: #eaeaea; font-weight: bold; }
   </style>
 </head>
 <body>
-  <div id="root"></div>
+  <div class="container">
+    <!-- 1단 메인 탭 -->
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchMainTab('clinical')">🏥 임상연구비</button>
+      <button class="tab-btn" onclick="switchMainTab('national')">📑 국책연구비</button>
+      <button class="tab-btn" onclick="switchMainTab('common')">⚙️ 공통</button>
+    </div>
 
-  <script type="text/babel">
-    const { useState, useEffect } = React;
+    <!-- 2단 서브 탭 -->
+    <div id="sub-tab-container" class="sub-tab-bar"></div>
 
+    <!-- 뷰 영역 -->
+    <div id="content-container"></div>
+  </div>
+
+  <script>
+    // ==========================================
+    // 💡 날짜 및 공휴일 엔진
+    // ==========================================
     const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
     const TODAY_STR = '2026-08-20';
 
-    const REPEAT_OPTIONS = [
-      { key: 'none', label: '1회성' },
-      { key: 'week', label: '매주' },
-      { key: 'biweek', label: '2주' },
-      { key: 'month_date', label: '매월(일자)' },
-      { key: 'month_nth_week', label: '매월 N주차' },
-      { key: 'month_last_week', label: '매월 마지막주' },
-      { key: 'quarter', label: '3개월' },
-      { key: 'year', label: '매년' }
-    ];
+    const KOREAN_HOLIDAYS = {
+      '2026-01-01': '신정', '2026-02-16': '설날 연휴', '2026-02-17': '설날', '2026-02-18': '설날 연휴',
+      '2026-03-01': '삼일절', '2026-03-02': '대체공휴일', '2026-05-05': '어린이날', '2026-05-24': '부처님오신날',
+      '2026-05-25': '대체공휴일', '2026-06-06': '현충일', '2026-08-15': '광복절', '2026-08-17': '대체공휴일',
+      '2026-09-24': '추석 연휴', '2026-09-25': '추석', '2026-09-26': '추석 연휴', '2026-10-03': '개천절',
+      '2026-10-05': '대체공휴일', '2026-10-09': '한글날', '2026-12-25': '성탄절'
+    };
 
-    function App() {
-      const [mainTab, setMainTab] = useState('clinical');
-      const [clinicalSubTab, setClinicalSubTab] = useState('meeting');
-      const [budgetSubTab, setBudgetSubTab] = useState('rnd');
-      const [commonSubTab, setCommonSubTab] = useState('todo');
+    function formatDateToYMD(date) {
+      if (!date) return '';
+      const d = new Date(date);
+      if (isNaN(d.getTime())) return '';
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
 
-      // --- 투두리스트 & 달력 상태 ---
-      const [todos, setTodos] = useState(() => {
-        const saved = localStorage.getItem('meeting_app_todos');
-        return saved ? JSON.parse(saved) : [];
-      });
-      const [newTodoCategory, setNewTodoCategory] = useState('임상');
-      const [newTodoTitle, setNewTodoTitle] = useState('');
-      const [newTodoRepeat, setNewTodoRepeat] = useState('none');
-      const [currentMonday, setCurrentMonday] = useState(getMondayOfDate(new Date(2026, 7, 20)));
-      const [selectedCalendarDate, setSelectedCalendarDate] = useState('2026-08-20');
-      const [calendarViewMonth, setCalendarViewMonth] = useState(new Date(2026, 7, 1));
-      const [doneViewMonth, setDoneViewMonth] = useState(new Date(2026, 7, 1));
+    function isHoliday(date) { return KOREAN_HOLIDAYS[formatDateToYMD(date)] || null; }
+    function isNonWorkingDay(date) {
+      const d = new Date(date);
+      return d.getDay() === 0 || d.getDay() === 6 || !!isHoliday(date);
+    }
+    function getNextWorkingDay(date) {
+      const cur = new Date(date);
+      cur.setHours(0, 0, 0, 0);
+      while (isNonWorkingDay(cur)) cur.setDate(cur.getDate() + 1);
+      return cur;
+    }
+    function getMondayOfDate(d) {
+      const dt = new Date(d);
+      const day = dt.getDay();
+      dt.setDate(dt.getDate() - day + (day === 0 ? -6 : 1));
+      dt.setHours(0, 0, 0, 0);
+      return dt;
+    }
 
-      // 회의비 상태
-      const [titles, setTitles] = useState(() => JSON.parse(localStorage.getItem('meeting_app_titles') || '[]'));
-      const [newTitle, setNewTitle] = useState('');
-      const [places, setPlaces] = useState(() => JSON.parse(localStorage.getItem('meeting_app_places') || '[]'));
-      const [newPlace, setNewPlace] = useState('');
-      const [members, setMembers] = useState(() => JSON.parse(localStorage.getItem('meeting_app_members') || '[]'));
-      const [newMember, setNewMember] = useState('');
-      const [pickCount, setPickCount] = useState('');
-      const [pickedResult, setPickedResult] = useState('');
+    // 💡 매월 첫 월요일이 1주차 기준
+    function getWeekInfo(mondayDate) {
+      const d = new Date(mondayDate);
+      d.setHours(0, 0, 0, 0);
+      const sunday = new Date(d);
+      sunday.setDate(d.getDate() + 6);
+      const year = d.getFullYear();
+      const month = d.getMonth() + 1;
 
-      // 계정 관리 상태
-      const [accounts, setAccounts] = useState(() => JSON.parse(localStorage.getItem('meeting_app_accounts') || '[]'));
-      const [accSite, setAccSite] = useState('');
-      const [accName, setAccName] = useState('');
-      const [accId, setAccId] = useState('');
-      const [accPw, setAccPw] = useState('');
+      const firstDayOfMonth = new Date(year, month - 1, 1);
+      let fMonDate = 1;
+      const fDayWeek = firstDayOfMonth.getDay();
+      if (fDayWeek === 1) fMonDate = 1;
+      else if (fDayWeek === 0) fMonDate = 2;
+      else fMonDate = 1 + (8 - fDayWeek);
+      const firstMon = new Date(year, month - 1, fMonDate);
 
-      useEffect(() => { localStorage.setItem('meeting_app_todos', JSON.stringify(todos)); }, [todos]);
-      useEffect(() => { localStorage.setItem('meeting_app_titles', JSON.stringify(titles)); }, [titles]);
-      useEffect(() => { localStorage.setItem('meeting_app_places', JSON.stringify(places)); }, [places]);
-      useEffect(() => { localStorage.setItem('meeting_app_members', JSON.stringify(members)); }, [members]);
-      useEffect(() => { localStorage.setItem('meeting_app_accounts', JSON.stringify(accounts)); }, [accounts]);
+      let weekNum = 0, targetYear = year, targetMonth = month;
+      if (d < firstMon) {
+        const pMonthLast = new Date(year, month - 1, 0);
+        targetYear = pMonthLast.getFullYear();
+        targetMonth = pMonthLast.getMonth() + 1;
+        const pFirstDay = new Date(targetYear, targetMonth - 1, 1);
+        let pFMonDate = 1;
+        const pFDayWeek = pFirstDay.getDay();
+        if (pFDayWeek === 1) pFMonDate = 1;
+        else if (pFDayWeek === 0) pFMonDate = 2;
+        else pFMonDate = 1 + (8 - pFDayWeek);
+        const pFirstMon = new Date(targetYear, targetMonth - 1, pFMonDate);
+        weekNum = Math.floor((d.getTime() - pFirstMon.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
+      } else {
+        weekNum = Math.floor((d.getTime() - firstMon.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
+      }
 
-      const copyToClipboard = (text) => {
-        if (!text) return;
-        navigator.clipboard.writeText(String(text));
-        alert('복사되었습니다: ' + text);
+      const nextMon = new Date(d);
+      nextMon.setDate(d.getDate() + 7);
+      const isLastWeek = nextMon.getMonth() + 1 !== targetMonth;
+
+      return {
+        year: targetYear, month: targetMonth, weekNum, isLastWeekOfMonth: isLastWeek,
+        isFirstWeekOfMonth: weekNum === 1, weekKey: `${targetYear}-${String(targetMonth).padStart(2, '0')}-W${weekNum}`,
+        label: `${targetYear}년 ${targetMonth}월 ${weekNum}주차`,
+        rangeStr: `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} ~ ${String(sunday.getMonth() + 1).padStart(2, '0')}.${String(sunday.getDate()).padStart(2, '0')}`,
+        monday: d, sunday
       };
+    }
 
-      // --- 투두 로직 ---
+    // ==========================================
+    // 💡 전역 상태 관리
+    // ==========================================
+    let currentMainTab = 'common';
+    let currentSubTab = 'todo';
+
+    let todos = JSON.parse(localStorage.getItem('m_app_todos') || '[]');
+    let currentMonday = getMondayOfDate(new Date(2026, 7, 20));
+    let selectedCalendarDate = '2026-08-20';
+    let calendarViewMonth = new Date(2026, 7, 1);
+    let selectedCategory = '임상';
+    let selectedRepeat = 'none';
+
+    let titles = JSON.parse(localStorage.getItem('m_app_titles') || '[]');
+    let places = JSON.parse(localStorage.getItem('m_app_places') || '[]');
+    let members = JSON.parse(localStorage.getItem('m_app_members') || '[]');
+    let accounts = JSON.parse(localStorage.getItem('m_app_accounts') || '[]');
+
+    function saveState() {
+      localStorage.setItem('m_app_todos', JSON.stringify(todos));
+      localStorage.setItem('m_app_titles', JSON.stringify(titles));
+      localStorage.setItem('m_app_places', JSON.stringify(places));
+      localStorage.setItem('m_app_members', JSON.stringify(members));
+      localStorage.setItem('m_app_accounts', JSON.stringify(accounts));
+    }
+
+    function copyText(t) {
+      if (!t) return;
+      navigator.clipboard.writeText(String(t));
+      alert('복사되었습니다:\n' + t);
+    }
+
+    // ==========================================
+    // 💡 투두 활성화 판정 로직
+    // ==========================================
+    function isTodoActiveOnDate(todo, targetDate) {
+      const todoStart = new Date(todo.baseDate || todo.createdAt);
+      todoStart.setHours(0, 0, 0, 0);
+      const target = new Date(targetDate);
+      target.setHours(0, 0, 0, 0);
+      if (target < todoStart) return false;
+
+      if (todo.repeat === 'none') return formatDateToYMD(target) === formatDateToYMD(getNextWorkingDay(todoStart));
+      if (todo.repeat === 'week') {
+        const weekMon = getMondayOfDate(target);
+        const orig = new Date(weekMon);
+        orig.setDate(weekMon.getDate() + (todo.baseDayOfWeek === 0 ? 6 : todo.baseDayOfWeek - 1));
+        return formatDateToYMD(target) === formatDateToYMD(getNextWorkingDay(orig));
+      }
+      if (todo.repeat === 'biweek') {
+        const weekMon = getMondayOfDate(target);
+        const orig = new Date(weekMon);
+        orig.setDate(weekMon.getDate() + (todo.baseDayOfWeek === 0 ? 6 : todo.baseDayOfWeek - 1));
+        const diffWeeks = Math.round((getMondayOfDate(orig).getTime() - getMondayOfDate(todoStart).getTime()) / (7 * 24 * 60 * 60 * 1000));
+        if (diffWeeks < 0 || diffWeeks % 2 !== 0) return false;
+        return formatDateToYMD(target) === formatDateToYMD(getNextWorkingDay(orig));
+      }
+      if (todo.repeat === 'month_date') {
+        const orig = new Date(target.getFullYear(), target.getMonth(), todo.baseDayOfMonth);
+        return formatDateToYMD(target) === formatDateToYMD(getNextWorkingDay(orig));
+      }
+      if (todo.repeat === 'month_nth_week') {
+        const firstMon = getMondayOfDate(new Date(target.getFullYear(), target.getMonth(), 1));
+        const targetMon = new Date(firstMon);
+        targetMon.setDate(firstMon.getDate() + (todo.baseWeekNum - 1) * 7);
+        const orig = new Date(targetMon);
+        orig.setDate(targetMon.getDate() + (todo.baseDayOfWeek === 0 ? 6 : todo.baseDayOfWeek - 1));
+        return formatDateToYMD(target) === formatDateToYMD(getNextWorkingDay(orig));
+      }
+      if (todo.repeat === 'month_last_week') {
+        const lastMon = getMondayOfDate(new Date(target.getFullYear(), target.getMonth() + 1, 0));
+        const orig = new Date(lastMon);
+        orig.setDate(lastMon.getDate() + (todo.baseDayOfWeek === 0 ? 6 : todo.baseDayOfWeek - 1));
+        return formatDateToYMD(target) === formatDateToYMD(getNextWorkingDay(orig));
+      }
+      if (todo.repeat === 'year') {
+        const orig = new Date(target.getFullYear(), todo.baseMonth - 1, todo.baseDayOfMonth);
+        return formatDateToYMD(target) === formatDateToYMD(getNextWorkingDay(orig));
+      }
+      return false;
+    }
+
+    function isTodoActiveInWeek(todo, weekInfo) {
+      for (let i = 0; i < 7; i++) {
+        const dayDate = new Date(weekInfo.monday);
+        dayDate.setDate(dayDate.getDate() + i);
+        if (isTodoActiveOnDate(todo, dayDate)) return true;
+      }
+      return false;
+    }
+
+    // ==========================================
+    // 💡 탭 전환 및 렌더링
+    // ==========================================
+    function switchMainTab(tab) {
+      currentMainTab = tab;
+      if (tab === 'clinical') currentSubTab = 'meeting';
+      else if (tab === 'national') currentSubTab = 'rnd';
+      else currentSubTab = 'todo';
+      render();
+    }
+
+    function switchSubTab(sub) {
+      currentSubTab = sub;
+      render();
+    }
+
+    function render() {
+      // 1단 탭 버튼 active 클래스 제어
+      document.querySelectorAll('.tab-btn').forEach((btn, idx) => {
+        btn.classList.remove('active');
+        if (idx === 0 && currentMainTab === 'clinical') btn.classList.add('active');
+        if (idx === 1 && currentMainTab === 'national') btn.classList.add('active');
+        if (idx === 2 && currentMainTab === 'common') btn.classList.add('active');
+      });
+
+      // 2단 서브탭 생성
+      const subContainer = document.getElementById('sub-tab-container');
+      if (currentMainTab === 'clinical') {
+        subContainer.innerHTML = `
+          <button class="sub-tab-btn ${currentSubTab==='meeting'?'active':''}" onclick="switchSubTab('meeting')">📊 회의비</button>
+          <button class="sub-tab-btn ${currentSubTab==='gallery'?'active':''}" onclick="switchSubTab('gallery')">🖼️ 서류</button>
+          <button class="sub-tab-btn ${currentSubTab==='search'?'active':''}" onclick="switchSubTab('search')">✨ 비목검색</button>
+        `;
+      } else if (currentMainTab === 'national') {
+        subContainer.innerHTML = `
+          <button class="sub-tab-btn ${currentSubTab==='rnd'?'active':''}" onclick="switchSubTab('rnd')">🔬 R&D 연구비</button>
+          <button class="sub-tab-btn ${currentSubTab==='rnd_labor'?'active':''}" onclick="switchSubTab('rnd_labor')">👥 R&D 인건비</button>
+          <button class="sub-tab-btn ${currentSubTab==='service'?'active':''}" onclick="switchSubTab('service')">💼 용역 연구비</button>
+        `;
+      } else {
+        subContainer.innerHTML = `
+          <button class="sub-tab-btn ${currentSubTab==='todo'?'active':''}" onclick="switchSubTab('todo')">📋 투두리스트</button>
+          <button class="sub-tab-btn ${currentSubTab==='accounts'?'active':''}" onclick="switchSubTab('accounts')">🔐 계정관리</button>
+          <button class="sub-tab-btn ${currentSubTab==='search'?'active':''}" onclick="switchSubTab('search')">✨ 비목검색</button>
+        `;
+      }
+
+      // 본문 렌더링
+      const content = document.getElementById('content-container');
+      if (currentMainTab === 'common' && currentSubTab === 'todo') renderTodoView(content);
+      else if (currentMainTab === 'clinical' && currentSubTab === 'meeting') renderMeetingView(content);
+      else if (currentMainTab === 'common' && currentSubTab === 'accounts') renderAccountsView(content);
+      else if (currentMainTab === 'national') renderNationalView(content);
+      else renderAiSearchView(content);
+    }
+
+    // --- 투두리스트 뷰 ---
+    function renderTodoView(container) {
       const curWeekInfo = getWeekInfo(currentMonday);
       const selDateObj = new Date(selectedCalendarDate);
       const selDayOfWeek = selDateObj.getDay();
       const selDateNum = selDateObj.getDate();
-      const selMonthNum = selDateObj.getMonth() + 1;
       const selDateWeekInfo = getWeekInfo(getMondayOfDate(selDateObj));
 
-      const addTodoItem = () => {
-        if (!newTodoTitle.trim()) return alert('할 일 내용을 입력해주세요.');
-        const d = new Date(selectedCalendarDate);
-        const startMon = getMondayOfDate(d);
-        const wInfo = getWeekInfo(startMon);
-        const newItem = {
-          id: Date.now().toString(),
-          category: newTodoCategory,
-          title: newTodoTitle.trim(),
-          baseDate: selectedCalendarDate,
-          baseDayOfWeek: d.getDay(),
-          baseDayOfMonth: d.getDate(),
-          baseMonth: d.getMonth() + 1,
-          baseWeekNum: wInfo.weekNum,
-          baseIsLastWeek: wInfo.isLastWeekOfMonth,
-          startWeekKey: wInfo.weekKey,
-          startMondayStr: startMon.toISOString(),
-          repeat: newTodoRepeat,
-          doneWeeks: {},
-          createdAt: new Date().toISOString()
-        };
-        setTodos([newItem, ...todos]);
-        setNewTodoTitle('');
-      };
+      const activeTodos = todos.filter(t => isTodoActiveInWeek(t, curWeekInfo) && !t.doneWeeks?.[curWeekInfo.weekKey]);
+      const doneTodos = todos.filter(t => isTodoActiveInWeek(t, curWeekInfo) && !!t.doneWeeks?.[curWeekInfo.weekKey]);
 
-      const isTodoActiveOnDate = (todo, targetDate) => {
-        const todoStart = new Date(todo.baseDate || todo.createdAt);
-        todoStart.setHours(0, 0, 0, 0);
-        const target = new Date(targetDate);
-        target.setHours(0, 0, 0, 0);
-        if (target < todoStart) return false;
-
-        if (todo.repeat === 'none') {
-          return formatDateToYMD(target) === formatDateToYMD(getNextWorkingDay(todoStart));
-        }
-        if (todo.repeat === 'week') {
-          const weekMon = getMondayOfDate(target);
-          const orig = new Date(weekMon);
-          orig.setDate(weekMon.getDate() + (todo.baseDayOfWeek === 0 ? 6 : todo.baseDayOfWeek - 1));
-          return formatDateToYMD(target) === formatDateToYMD(getNextWorkingDay(orig));
-        }
-        if (todo.repeat === 'biweek') {
-          const weekMon = getMondayOfDate(target);
-          const orig = new Date(weekMon);
-          orig.setDate(weekMon.getDate() + (todo.baseDayOfWeek === 0 ? 6 : todo.baseDayOfWeek - 1));
-          const diffWeeks = Math.round((getMondayOfDate(orig).getTime() - getMondayOfDate(todoStart).getTime()) / (7 * 24 * 60 * 60 * 1000));
-          if (diffWeeks < 0 || diffWeeks % 2 !== 0) return false;
-          return formatDateToYMD(target) === formatDateToYMD(getNextWorkingDay(orig));
-        }
-        if (todo.repeat === 'month_date') {
-          const orig = new Date(target.getFullYear(), target.getMonth(), todo.baseDayOfMonth);
-          return formatDateToYMD(target) === formatDateToYMD(getNextWorkingDay(orig));
-        }
-        if (todo.repeat === 'month_nth_week') {
-          const firstMon = getMondayOfDate(new Date(target.getFullYear(), target.getMonth(), 1));
-          const targetMon = new Date(firstMon);
-          targetMon.setDate(firstMon.getDate() + (todo.baseWeekNum - 1) * 7);
-          const orig = new Date(targetMon);
-          orig.setDate(targetMon.getDate() + (todo.baseDayOfWeek === 0 ? 6 : todo.baseDayOfWeek - 1));
-          return formatDateToYMD(target) === formatDateToYMD(getNextWorkingDay(orig));
-        }
-        if (todo.repeat === 'month_last_week') {
-          const lastMon = getMondayOfDate(new Date(target.getFullYear(), target.getMonth() + 1, 0));
-          const orig = new Date(lastMon);
-          orig.setDate(lastMon.getDate() + (todo.baseDayOfWeek === 0 ? 6 : todo.baseDayOfWeek - 1));
-          return formatDateToYMD(target) === formatDateToYMD(getNextWorkingDay(orig));
-        }
-        if (todo.repeat === 'year') {
-          const orig = new Date(target.getFullYear(), todo.baseMonth - 1, todo.baseDayOfMonth);
-          return formatDateToYMD(target) === formatDateToYMD(getNextWorkingDay(orig));
-        }
-        return false;
-      };
-
-      const isTodoActiveInWeek = (todo, weekInfo) => {
-        for (let i = 0; i < 7; i++) {
-          const dayDate = new Date(weekInfo.monday);
-          dayDate.setDate(dayDate.getDate() + i);
-          if (isTodoActiveOnDate(todo, dayDate)) return true;
-        }
-        return false;
-      };
-
-      const toggleTodoDoneInWeek = (todoId, weekKey) => {
-        setTodos(todos.map(t => {
-          if (t.id === todoId) {
-            const nextDone = { ...(t.doneWeeks || {}) };
-            if (nextDone[weekKey]) delete nextDone[weekKey];
-            else nextDone[weekKey] = '2026-08-20';
-            return { ...t, doneWeeks: nextDone };
-          }
-          return t;
-        }));
-      };
-
-      const currentWeekActiveTodos = todos.filter(t => isTodoActiveInWeek(t, curWeekInfo) && !t.doneWeeks?.[curWeekInfo.weekKey]);
-      const currentWeekDoneTodos = todos.filter(t => isTodoActiveInWeek(t, curWeekInfo) && !!t.doneWeeks?.[curWeekInfo.weekKey]);
-
-      const dynamicRepeatOptions = [
-        { key: 'none', label: '1회성' },
-        { key: 'week', label: `매주(${DAY_NAMES[selDayOfWeek]})` },
-        { key: 'biweek', label: `2주(${DAY_NAMES[selDayOfWeek]})` },
-        { key: 'month_date', label: `매월(${selDateNum}일)` },
-        { key: 'month_nth_week', label: `매월 ${selDateWeekInfo.weekNum}주차(${DAY_NAMES[selDayOfWeek]})` },
-        ...(selDateWeekInfo.isLastWeekOfMonth ? [{ key: 'month_last_week', label: `매월 마지막주(${DAY_NAMES[selDayOfWeek]})` }] : []),
-        { key: 'year', label: `매년(${selMonthNum}/${selDateNum})` }
+      const dynamicRepeats = [
+        { k: 'none', l: '1회성' },
+        { k: 'week', l: `매주(${DAY_NAMES[selDayOfWeek]})` },
+        { k: 'biweek', l: `2주(${DAY_NAMES[selDayOfWeek]})` },
+        { k: 'month_date', l: `매월(${selDateNum}일)` },
+        { k: 'month_nth_week', l: `매월 ${selDateWeekInfo.weekNum}주차(${DAY_NAMES[selDayOfWeek]})` }
       ];
 
-      // 달력 렌더러
-      const renderCalendar = () => {
-        const year = calendarViewMonth.getFullYear();
-        const month = calendarViewMonth.getMonth();
-        const firstDay = new Date(year, month, 1).getDay();
-        const totalDays = new Date(year, month + 1, 0).getDate();
+      // 달력 테이블 구성
+      const year = calendarViewMonth.getFullYear();
+      const month = calendarViewMonth.getMonth();
+      const firstDay = new Date(year, month, 1).getDay();
+      const totalDays = new Date(year, month + 1, 0).getDate();
 
-        const days = [];
-        for (let i = 0; i < firstDay; i++) days.push(null);
-        for (let d = 1; d <= totalDays; d++) days.push(d);
+      const days = [];
+      for (let i = 0; i < firstDay; i++) days.push(null);
+      for (let d = 1; d <= totalDays; d++) days.push(d);
+      while (days.length % 7 !== 0) days.push(null);
 
-        const weeks = [];
-        for (let i = 0; i < days.length; i += 7) {
-          const chunk = days.slice(i, i + 7);
-          while (chunk.length < 7) chunk.push(null);
-          weeks.push(chunk);
+      let calRowsHtml = '';
+      for (let i = 0; i < days.length; i += 7) {
+        calRowsHtml += '<tr>';
+        for (let j = 0; j < 7; j++) {
+          const d = days[i + j];
+          if (!d) {
+            calRowsHtml += '<td class="cal-cell"></td>';
+          } else {
+            const dStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+            const isSel = selectedCalendarDate === dStr;
+            const isToday = dStr === TODAY_STR;
+            const cDate = new Date(year, month, d);
+            const isRed = cDate.getDay() === 0 || !!isHoliday(cDate);
+            const activeOnDay = todos.filter(t => isTodoActiveOnDate(t, cDate));
+
+            calRowsHtml += `
+              <td class="cal-cell ${isToday?'today':''} ${isSel?'selected':''}" 
+                  style="color: ${isRed?'#ff3b30':cDate.getDay()===6?'#007AFF':'#333'}"
+                  onclick="selectDate('${dStr}')">
+                ${isToday && !isSel ? '<span class="today-badge">오늘</span>' : ''}
+                ${d}
+                ${activeOnDay.length > 0 ? `
+                  <div class="dot-wrap">
+                    <span class="dot ${activeOnDay.some(t => !t.doneWeeks?.[getWeekInfo(getMondayOfDate(cDate)).weekKey])?'dot-red':'dot-green'}"></span>
+                  </div>` : ''}
+              </td>
+            `;
+          }
         }
+        calRowsHtml += '</tr>';
+      }
 
-        return (
-          <div>
-            <div className="row-between" style={{ marginBottom: '10px' }}>
-              <strong style={{ fontSize: '14px' }}>📅 {year}년 {month + 1}월 달력</strong>
-              <div style={{ display: 'flex', gap: '4px' }}>
-                <button className="btn btn-gray" style={{ padding: '4px 8px' }} onClick={() => setCalendarViewMonth(new Date(year, month - 1, 1))}>◀</button>
-                <button className="btn btn-gray" style={{ padding: '4px 8px' }} onClick={() => setCalendarViewMonth(new Date(2026, 7, 1))}>오늘</button>
-                <button className="btn btn-gray" style={{ padding: '4px 8px' }} onClick={() => setCalendarViewMonth(new Date(year, month + 1, 1))}>▶</button>
-              </div>
+      container.innerHTML = `
+        <div class="card">
+          <div class="row-between">
+            <div>
+              <strong style="font-size:15px; color:#007AFF;">📅 ${curWeekInfo.label}</strong>
+              <div style="font-size:11px; color:#8e8e93;">기간: ${curWeekInfo.rangeStr}</div>
             </div>
+            <div style="display:flex; gap:4px;">
+              <button class="btn btn-gray" style="padding:4px 8px;" onclick="changeWeek(-1)">◀ 이전</button>
+              <button class="btn btn-gray" style="padding:4px 8px;" onclick="goCurrentWeek()">이번주</button>
+              <button class="btn btn-gray" style="padding:4px 8px;" onclick="changeWeek(1)">다음 ▶</button>
+            </div>
+          </div>
 
-            <table className="calendar-grid">
+          <!-- 등록 바 -->
+          <div style="background-color:#f9f9fb; padding:10px; border-radius:8px; margin-top:10px; border:1px solid #e5e5ea;">
+            <div style="display:flex; gap:6px; margin-bottom:8px;">
+              ${['임상', '국책', '일반'].map(c => `
+                <button class="btn ${selectedCategory===c?'btn-green':'btn-gray'}" style="padding:4px 10px;" onclick="selectedCategory='${c}'; render();">${c}</button>
+              `).join('')}
+            </div>
+            <div class="row">
+              <input id="todo-input" placeholder="[${selectedCategory}] 할 일 입력 후 추가..." onkeydown="if(event.key==='Enter') addTodo()" />
+            </div>
+            <div class="row-between" style="flex-wrap:wrap; gap:4px;">
+              <div style="display:flex; gap:4px; flex-wrap:wrap;">
+                ${dynamicRepeats.map(r => `
+                  <button class="btn ${selectedRepeat===r.k?'':'btn-gray'}" style="padding:4px 6px; font-size:10px;" onclick="selectedRepeat='${r.k}'; render();">${r.l}</button>
+                `).join('')}
+              </div>
+              <button class="btn" onclick="addTodo()">추가</button>
+            </div>
+          </div>
+
+          <!-- 진행중 목록 -->
+          <div style="margin-top:12px;">
+            ${activeTodos.length === 0 ? '<div style="text-align:center; color:#8e8e93; padding:16px 0; font-size:12px;">진행중인 할 일이 없습니다.</div>' : 
+              activeTodos.map(item => `
+                <div class="todo-card">
+                  <input type="checkbox" style="width:18px; height:18px; cursor:pointer;" onclick="toggleDone('${item.id}', '${curWeekInfo.weekKey}')" />
+                  <div style="flex:1;">
+                    <span class="badge ${item.category==='임상'?'badge-clinical':item.category==='국책'?'badge-national':'badge-general'}">[${item.category}]</span>
+                    <strong style="font-size:13px;">${item.title}</strong>
+                  </div>
+                  <button class="btn btn-gray" style="padding:2px 6px;" onclick="delTodo('${item.id}')">✕</button>
+                </div>
+              `).join('')}
+          </div>
+
+          ${doneTodos.length > 0 ? `
+            <div style="margin-top:12px; border-top:1px solid #eee; padding-top:8px;">
+              <div class="sub-header" style="color:#389e0d;">✅ 이번 주 완료된 항목 (${doneTodos.length}건)</div>
+              ${doneTodos.map(item => `
+                <div class="todo-card done">
+                  <input type="checkbox" checked style="width:18px; height:18px; cursor:pointer;" onclick="toggleDone('${item.id}', '${curWeekInfo.weekKey}')" />
+                  <div style="flex:1; text-decoration:line-through; color:#8e8e93;">[${item.category}] ${item.title}</div>
+                  <button class="btn btn-gray" style="padding:2px 6px;" onclick="delTodo('${item.id}')">✕</button>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- 달력 카드 -->
+        <div class="card">
+          <div class="row-between" style="margin-bottom:8px;">
+            <strong style="font-size:14px;">📅 ${year}년 ${month+1}월 달력</strong>
+            <div style="display:flex; gap:4px;">
+              <button class="btn btn-gray" style="padding:4px 8px;" onclick="changeCalMonth(-1)">◀</button>
+              <button class="btn btn-gray" style="padding:4px 8px;" onclick="calendarViewMonth=new Date(2026,7,1); render();">오늘</button>
+              <button class="btn btn-gray" style="padding:4px 8px;" onclick="changeCalMonth(1)">▶</button>
+            </div>
+          </div>
+          <table class="calendar-grid">
+            <thead>
+              <tr>${DAY_NAMES.map((w, idx) => `<th class="cal-header-cell" style="color:${idx===0?'#ff3b30':idx===6?'#007AFF':'#666'}">${w}</th>`).join('')}</tr>
+            </thead>
+            <tbody>${calRowsHtml}</tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    // --- 회의비 뷰 ---
+    function renderMeetingView(container) {
+      container.innerHTML = `
+        <div class="card">
+          <div class="card-header">📌 회의 제목 (누르면 복사)</div>
+          <div class="row">
+            <input id="title-input" placeholder="새 회의 제목..." onkeydown="if(event.key==='Enter') addTitleItem()" />
+            <button class="btn" onclick="addTitleItem()">추가</button>
+          </div>
+          ${titles.map((t, idx) => `
+            <div class="list-item" style="cursor:pointer;" onclick="copyText('${t}')">
+              <span>${t}</span>
+              <span style="color:#007AFF; font-weight:bold; font-size:11px;">복사</span>
+            </div>
+          `).join('')}
+        </div>
+
+        <div class="card">
+          <div class="card-header">👥 참여자 랜덤 추출</div>
+          <div class="row">
+            <input id="member-input" placeholder="참여자 명단 (쉼표 구분)..." value="${members.join(', ')}" onchange="members=this.value.split(',').map(s=>s.trim()).filter(Boolean); saveState();" />
+            <input id="pick-count" style="width:60px; text-align:center;" placeholder="인원" value="${pickCount}" onchange="pickCount=this.value;" />
+            <button class="btn btn-green" onclick="drawMembers()">뽑기</button>
+          </div>
+          ${pickedResult ? `
+            <div class="list-item" style="background-color:#eef9f1; cursor:pointer;" onclick="copyText('${pickedResult}')">
+              <strong style="color:#1b5e20;">결과: ${pickedResult}</strong>
+              <span style="color:#007AFF; font-size:11px;">클릭 시 복사</span>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    // --- 계정 관리 뷰 ---
+    function renderAccountsView(container) {
+      container.innerHTML = `
+        <div class="card">
+          <div class="card-header">➕ 새 계정 등록</div>
+          <div class="row" style="gap:6px;">
+            <input id="acc-site" placeholder="사이트명 (예: CTSC)" />
+            <input id="acc-name" placeholder="성명" />
+          </div>
+          <div class="row" style="gap:6px;">
+            <input id="acc-id" placeholder="아이디" />
+            <input id="acc-pw" placeholder="비밀번호" />
+          </div>
+          <button class="btn" style="width:100%; margin-top:4px;" onclick="addAccountItem()">계정 저장</button>
+        </div>
+
+        ${accounts.map(a => `
+          <div class="card">
+            <div class="row-between">
+              <strong style="color:#007AFF;">🌐 ${a.site} (${a.name})</strong>
+              <button class="btn btn-gray" style="padding:2px 6px;" onclick="delAccount('${a.id}')">✕</button>
+            </div>
+            <div class="row" style="gap:6px; margin-top:6px;">
+              <button class="btn btn-gray" style="flex:1;" onclick="copyText('${a.userId}')">ID: ${a.userId}</button>
+              <button class="btn btn-gray" style="flex:1;" onclick="copyText('${a.userPw}')">PW: ${a.userPw}</button>
+            </div>
+          </div>
+        `).join('')}
+      `;
+    }
+
+    // --- 국책연구비 뷰 ---
+    function renderNationalView(container) {
+      container.innerHTML = `
+        <div class="card">
+          <div class="card-header">가톨릭대학교 산학협력단 R&D 국책 연구비 산정표</div>
+          <div class="table-responsive">
+            <table class="budget-table">
               <thead>
                 <tr>
-                  {DAY_NAMES.map((w, idx) => (
-                    <th key={w} className="cal-header-cell" style={{ color: idx === 0 ? '#ff3b30' : idx === 6 ? '#007AFF' : '#666' }}>{w}</th>
-                  ))}
+                  <th>세목</th><th>세세목</th><th>1차년도</th><th>2차년도</th><th>3차년도</th>
                 </tr>
               </thead>
               <tbody>
-                {weeks.map((week, wIdx) => (
-                  <tr key={wIdx}>
-                    {week.map((day, dIdx) => {
-                      if (!day) return <td key={dIdx} className="cal-cell"></td>;
-                      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                      const isSelected = selectedCalendarDate === dateStr;
-                      const isToday = dateStr === TODAY_STR;
-                      const cellDate = new Date(year, month, day);
-                      const isRedDay = cellDate.getDay() === 0 || !!isHoliday(cellDate);
-                      const activeTodosOnDay = todos.filter(t => isTodoActiveOnDate(t, cellDate));
-
-                      return (
-                        <td
-                          key={dIdx}
-                          className={`cal-cell ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}`}
-                          style={{ color: isRedDay ? '#ff3b30' : cellDate.getDay() === 6 ? '#007AFF' : '#333' }}
-                          onClick={() => {
-                            setSelectedCalendarDate(dateStr);
-                            setCurrentMonday(getMondayOfDate(cellDate));
-                          }}
-                        >
-                          {isToday && !isSelected && <span className="today-badge">오늘</span>}
-                          {day}
-                          {activeTodosOnDay.length > 0 && (
-                            <div className="dot-wrap">
-                              <span className={`dot ${activeTodosOnDay.some(t => !t.doneWeeks?.[getWeekInfo(getMondayOfDate(cellDate)).weekKey]) ? 'dot-red' : 'dot-green'}`}></span>
-                            </div>
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
+                <tr><td>인건비</td><td>책임연구원</td><td>-</td><td>-</td><td>-</td></tr>
+                <tr><td>인건비</td><td>연구원</td><td>-</td><td>-</td><td>-</td></tr>
+                <tr><td>연구활동비</td><td>회의비</td><td>-</td><td>-</td><td>-</td></tr>
+                <tr><td>간접비</td><td>17.45% 만원절사</td><td>-</td><td>-</td><td>-</td></tr>
               </tbody>
             </table>
           </div>
-        );
-      };
-
-      return (
-        <div>
-          {/* 상단 1단 메인 탭 */}
-          <div className="tab-bar">
-            <button className={`tab-btn ${mainTab === 'clinical' ? 'active' : ''}`} onClick={() => setMainTab('clinical')}>🏥 임상연구비</button>
-            <button className={`tab-btn ${mainTab === 'national' ? 'active' : ''}`} onClick={() => setMainTab('national')}>📑 국책연구비</button>
-            <button className={`tab-btn ${mainTab === 'common' ? 'active' : ''}`} onClick={() => setMainTab('common')}>⚙️ 공통</button>
-          </div>
-
-          {/* 2단 서브 탭 */}
-          {mainTab === 'clinical' && (
-            <div className="sub-tab-bar">
-              <button className={`sub-tab-btn ${clinicalSubTab === 'meeting' ? 'active' : ''}`} onClick={() => setClinicalSubTab('meeting')}>📊 회의비</button>
-              <button className={`sub-tab-btn ${clinicalSubTab === 'gallery' ? 'active' : ''}`} onClick={() => setClinicalSubTab('gallery')}>🖼️ 서류</button>
-              <button className={`sub-tab-btn ${clinicalSubTab === 'search' ? 'active' : ''}`} onClick={() => setClinicalSubTab('search')}>✨ 비목검색</button>
-            </div>
-          )}
-
-          {mainTab === 'national' && (
-            <div className="sub-tab-bar">
-              <button className={`sub-tab-btn ${budgetSubTab === 'rnd' ? 'active' : ''}`} onClick={() => setBudgetSubTab('rnd')}>🔬 R&D 연구비</button>
-              <button className={`sub-tab-btn ${budgetSubTab === 'rnd_labor' ? 'active' : ''}`} onClick={() => setBudgetSubTab('rnd_labor')}>👥 R&D 인건비</button>
-              <button className={`sub-tab-btn ${budgetSubTab === 'service' ? 'active' : ''}`} onClick={() => setBudgetSubTab('service')}>💼 용역 연구비</button>
-            </div>
-          )}
-
-          {mainTab === 'common' && (
-            <div className="sub-tab-bar">
-              <button className={`sub-tab-btn ${commonSubTab === 'todo' ? 'active' : ''}`} onClick={() => setCommonSubTab('todo')}>📋 투두리스트</button>
-              <button className={`sub-tab-btn ${commonSubTab === 'accounts' ? 'active' : ''}`} onClick={() => setCommonSubTab('accounts')}>🔐 계정관리</button>
-              <button className={`sub-tab-btn ${commonSubTab === 'search' ? 'active' : ''}`} onClick={() => setCommonSubTab('search')}>✨ 비목검색</button>
-            </div>
-          )}
-
-          {/* --- 1. 공통: 투두리스트 & 달력 --- */}
-          {mainTab === 'common' && commonSubTab === 'todo' && (
-            <div>
-              <div className="card">
-                <div className="row-between">
-                  <div>
-                    <strong style={{ fontSize: '15px', color: '#007AFF' }}>📅 {curWeekInfo.label}</strong>
-                    <div style={{ fontSize: '11px', color: '#8e8e93' }}>기간: {curWeekInfo.rangeStr}</div>
-                  </div>
-                  <div style={{ display: 'flex', gap: '4px' }}>
-                    <button className="btn btn-gray" style={{ padding: '4px 8px' }} onClick={() => { const n = new Date(currentMonday); n.setDate(n.getDate() - 7); setCurrentMonday(n); }}>◀ 이전</button>
-                    <button className="btn btn-gray" style={{ padding: '4px 8px' }} onClick={() => setCurrentMonday(getMondayOfDate(new Date(2026, 7, 20)))}>이번주</button>
-                    <button className="btn btn-gray" style={{ padding: '4px 8px' }} onClick={() => { const n = new Date(currentMonday); n.setDate(n.getDate() + 7); setCurrentMonday(n); }}>다음 ▶</button>
-                  </div>
-                </div>
-
-                {/* 투두 등록창 */}
-                <div style={{ backgroundColor: '#f9f9fb', padding: '10px', borderRadius: '8px', marginTop: '10px', border: '1px solid #e5e5ea' }}>
-                  <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
-                    {['임상', '국책', '일반'].map(cat => (
-                      <button key={cat} className={`btn ${newTodoCategory === cat ? 'btn-green' : 'btn-gray'}`} style={{ padding: '4px 10px' }} onClick={() => setNewTodoCategory(cat)}>{cat}</button>
-                    ))}
-                  </div>
-                  <div className="row">
-                    <input className="input-flex" placeholder={`[${newTodoCategory}] 할 일 입력...`} value={newTodoTitle} onChange={(e) => setNewTodoTitle(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addTodoItem()} />
-                  </div>
-                  <div className="row-between" style={{ flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
-                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                      {dynamicRepeatOptions.map(r => (
-                        <button key={r.key} className={`btn ${newTodoRepeat === r.key ? '' : 'btn-gray'}`} style={{ padding: '4px 6px', fontSize: '10px' }} onClick={() => setNewTodoRepeat(r.key)}>{r.label}</button>
-                      ))}
-                    </div>
-                    <button className="btn" onClick={addTodoItem}>추가</button>
-                  </div>
-                </div>
-
-                {/* 주간 목록 */}
-                <div style={{ marginTop: '12px' }}>
-                  {currentWeekActiveTodos.length === 0 ? (
-                    <div style={{ textAlign: 'center', color: '#8e8e93', padding: '20px 0', fontSize: '12px' }}>진행중인 할 일이 없습니다.</div>
-                  ) : (
-                    currentWeekActiveTodos.map(item => (
-                      <div key={item.id} className="todo-card">
-                        <input type="checkbox" style={{ width: '18px', height: '18px', cursor: 'pointer' }} onChange={() => toggleTodoDoneInWeek(item.id, curWeekInfo.weekKey)} />
-                        <div style={{ flex: 1 }}>
-                          <span className={`badge ${item.category === '임상' ? 'badge-clinical' : item.category === '국책' ? 'badge-national' : 'badge-general'}`} style={{ marginRight: '6px' }}>[{item.category}]</span>
-                          <strong style={{ fontSize: '13px' }}>{item.title}</strong>
-                        </div>
-                        <button className="btn btn-gray" style={{ padding: '2px 6px' }} onClick={() => setTodos(todos.filter(t => t.id !== item.id))}>✕</button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              {/* 달력 카드 */}
-              <div className="card">
-                {renderCalendar()}
-              </div>
-            </div>
-          )}
-
-          {/* --- 2. 임상: 회의비 --- */}
-          {mainTab === 'clinical' && clinicalSubTab === 'meeting' && (
-            <div>
-              <div className="card">
-                <div className="card-header">📌 회의 제목 (누르면 복사)</div>
-                <div className="row">
-                  <input className="input-flex" style={{ marginRight: '6px' }} placeholder="새 회의 제목..." value={newTitle} onChange={(e) => setNewTitle(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && setTitles([...titles, newTitle.trim()])} />
-                  <button className="btn" onClick={() => { if(newTitle) { setTitles([...titles, newTitle.trim()]); setNewTitle(''); } }}>추가</button>
-                </div>
-                {titles.map((t, idx) => (
-                  <div key={idx} className="list-item" onClick={() => copyToClipboard(t)} style={{ cursor: 'pointer' }}>
-                    <span>{t}</span>
-                    <span style={{ color: '#007AFF', fontWeight: 'bold', fontSize: '11px' }}>복사</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="card">
-                <div className="card-header">👥 참여자 랜덤 추출</div>
-                <div className="row">
-                  <input className="input-flex" style={{ marginRight: '6px' }} placeholder="참여자 명단 (쉼표 구분)..." value={newMember} onChange={(e) => setNewMember(e.target.value)} />
-                  <input style={{ width: '60px', marginRight: '6px', textAlign: 'center' }} placeholder="인원수" value={pickCount} onChange={(e) => setPickCount(e.target.value)} />
-                  <button className="btn btn-green" onClick={() => {
-                    const list = newMember.split(',').map(s => s.trim()).filter(Boolean);
-                    const n = parseInt(pickCount, 10);
-                    if (n && list.length) setPickedResult([...list].sort(() => 0.5 - Math.random()).slice(0, n).join(', '));
-                  }}>뽑기</button>
-                </div>
-                {pickedResult && (
-                  <div className="list-item" style={{ backgroundColor: '#eef9f1', cursor: 'pointer' }} onClick={() => copyToClipboard(pickedResult)}>
-                    <strong style={{ color: '#1b5e20' }}>선택: {pickedResult}</strong>
-                    <span style={{ color: '#007AFF', fontSize: '11px' }}>클릭 시 복사</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* --- 3. 공통: 계정 관리 --- */}
-          {mainTab === 'common' && commonSubTab === 'accounts' && (
-            <div>
-              <div className="card">
-                <div className="card-header">➕ 새 계정 등록</div>
-                <div className="row" style={{ gap: '6px' }}>
-                  <input className="input-flex" placeholder="사이트명 (예: CTSC)" value={accSite} onChange={(e) => setAccSite(e.target.value)} />
-                  <input className="input-flex" placeholder="성명" value={accName} onChange={(e) => setAccName(e.target.value)} />
-                </div>
-                <div className="row" style={{ gap: '6px' }}>
-                  <input className="input-flex" placeholder="아이디" value={accId} onChange={(e) => setAccId(e.target.value)} />
-                  <input className="input-flex" placeholder="비밀번호" value={accPw} onChange={(e) => setAccPw(e.target.value)} />
-                </div>
-                <button className="btn" style={{ width: '100%', marginTop: '6px' }} onClick={() => {
-                  if (accSite) {
-                    setAccounts([...accounts, { id: Date.now().toString(), site: accSite, name: accName, userId: accId, userPw: accPw }]);
-                    setAccSite(''); setAccName(''); setAccId(''); setAccPw('');
-                  }
-                }}>계정 저장</button>
-              </div>
-
-              {accounts.map(acc => (
-                <div key={acc.id} className="card">
-                  <div className="row-between">
-                    <strong style={{ color: '#007AFF' }}>🌐 {acc.site} ({acc.name})</strong>
-                    <button className="btn btn-gray" style={{ padding: '2px 6px' }} onClick={() => setAccounts(accounts.filter(a => a.id !== acc.id))}>✕</button>
-                  </div>
-                  <div className="row" style={{ gap: '6px', marginTop: '6px' }}>
-                    <button className="btn btn-gray" style={{ flex: 1 }} onClick={() => copyToClipboard(acc.userId)}>ID: {acc.userId}</button>
-                    <button className="btn btn-gray" style={{ flex: 1 }} onClick={() => copyToClipboard(acc.userPw)}>PW: {acc.userPw}</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
-      );
+      `;
     }
 
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
+    // --- 비목 검색 뷰 ---
+    function renderAiSearchView(container) {
+      container.innerHTML = `
+        <div class="card">
+          <div class="card-header">✨ AI 연구비 비목 분류 챗봇</div>
+          <div class="row">
+            <input id="ai-prompt" placeholder="지출 항목 문의 (예: 임상 회의비, 국책 재료비)..." onkeydown="if(event.key==='Enter') askAiQuery()" />
+            <button class="btn" onclick="askAiQuery()">전송</button>
+          </div>
+          <div id="ai-response" style="margin-top:10px; font-size:12.5px; line-height:1.6; color:#333; white-space:pre-wrap; background:#f9f9fb; padding:10px; border-radius:8px; border:1px solid #e5e5ea;">
+            지출하고자 하는 항목을 질문해 주시면 적절한 비목과 규정을 안내해 드립니다.
+          </div>
+        </div>
+      `;
+    }
+
+    // ==========================================
+    // 💡 이벤트 핸들러들
+    // ==========================================
+    function selectDate(dStr) {
+      selectedCalendarDate = dStr;
+      currentMonday = getMondayOfDate(new Date(dStr));
+      render();
+    }
+    function changeCalMonth(offset) {
+      calendarViewMonth = new Date(calendarViewMonth.getFullYear(), calendarViewMonth.getMonth() + offset, 1);
+      render();
+    }
+    function changeWeek(offset) {
+      const n = new Date(currentMonday);
+      n.setDate(n.getDate() + offset * 7);
+      currentMonday = n;
+      render();
+    }
+    function goCurrentWeek() {
+      currentMonday = getMondayOfDate(new Date(2026, 7, 20));
+      selectedCalendarDate = '2026-08-20';
+      render();
+    }
+    function addTodo() {
+      const input = document.getElementById('todo-input');
+      if (!input || !input.value.trim()) return;
+      const d = new Date(selectedCalendarDate);
+      const startMon = getMondayOfDate(d);
+      const wInfo = getWeekInfo(startMon);
+      todos.unshift({
+        id: Date.now().toString(),
+        category: selectedCategory,
+        title: input.value.trim(),
+        baseDate: selectedCalendarDate,
+        baseDayOfWeek: d.getDay(),
+        baseDayOfMonth: d.getDate(),
+        baseMonth: d.getMonth() + 1,
+        baseWeekNum: wInfo.weekNum,
+        startWeekKey: wInfo.weekKey,
+        startMondayStr: startMon.toISOString(),
+        repeat: selectedRepeat,
+        doneWeeks: {},
+        createdAt: new Date().toISOString()
+      });
+      saveState();
+      render();
+    }
+    function toggleDone(id, wKey) {
+      todos = todos.map(t => {
+        if (t.id === id) {
+          const next = { ...(t.doneWeeks || {}) };
+          if (next[wKey]) delete next[wKey];
+          else next[wKey] = '2026-08-20';
+          return { ...t, doneWeeks: next };
+        }
+        return t;
+      });
+      saveState();
+      render();
+    }
+    function delTodo(id) {
+      todos = todos.filter(t => t.id !== id);
+      saveState();
+      render();
+    }
+    function addTitleItem() {
+      const inp = document.getElementById('title-input');
+      if (inp && inp.value.trim()) {
+        titles.push(inp.value.trim());
+        saveState();
+        render();
+      }
+    }
+    function drawMembers() {
+      const cnt = parseInt(pickCount, 10);
+      if (!cnt || cnt <= 0) return alert('올바른 인원수를 입력하세요.');
+      pickedResult = [...members].sort(() => 0.5 - Math.random()).slice(0, cnt).join(', ');
+      render();
+    }
+    function addAccountItem() {
+      const site = document.getElementById('acc-site').value;
+      const name = document.getElementById('acc-name').value;
+      const id = document.getElementById('acc-id').value;
+      const pw = document.getElementById('acc-pw').value;
+      if (site) {
+        accounts.unshift({ id: Date.now().toString(), site, name, userId: id, userPw: pw });
+        saveState();
+        render();
+      }
+    }
+    function delAccount(id) {
+      accounts = accounts.filter(a => a.id !== id);
+      saveState();
+      render();
+    }
+    function askAiQuery() {
+      const prompt = document.getElementById('ai-prompt').value;
+      const resBox = document.getElementById('ai-response');
+      if (!prompt) return;
+      resBox.innerText = `답변 생성 중...`;
+      setTimeout(() => {
+        resBox.innerText = `[${prompt}] 항목에 대한 추천 비목:\n- 권장 비목: 연구활동비(회의비/유인물비/사무용품비)\n- 사유: 지출 목적 및 증빙 영수증을 구비하여 집행 가능합니다.`;
+      }, 500);
+    }
+
+    // 초기 실행
+    render();
   </script>
 </body>
 </html>
